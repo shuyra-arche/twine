@@ -13,12 +13,14 @@ Twine 是 Shuyra 的 `no_std` 通信库，使用 Kernel ABI v11 并适配
 ## 原生内存上下文
 
 API、Client 和测试镜像的 Server 固定到 Kernel
-[#182 的已验证数据 SMP 候选](https://github.com/shuyra-arche/kernel/pull/182)，
-对应提交 `2cfb581a7ef767ebae0fda4864ed5da625ef067e`。
+[#183 的可执行 SMP 候选](https://github.com/shuyra-arche/kernel/pull/183)，
+对应提交 `684f479c45dc2d94d405b32b4ffc6334a4233fc9`。
 所有 manifest 使用该完整 `rev`，与 Vanllia 使用同一个 Cargo Git 来源身份；
 本次更新为待合并提供方的精确 pin，不代表新发布。它在 Delta 的基础上补全
 跨 Hart CPU 完成证明，保留 #180 的 DTB/initrd 受管只读来源与 #175 的 Nest 创建修复。
-可执行 SMP 仍明确拒绝。提供方 CI 已验证此 SHA，合并顺序为 Kernel、Twine、消费者。
+可执行 SMP 需要平台显式准入；本仓库通信镜像继续验证单 Hart。
+提供方 Host/构建与开发 Loader 组合已验证；最终 CI 证据见关联 PR。
+合并顺序为 Kernel、Twine、消费者。
 ABI/Ledger 仍为 11/11、Capsule 格式仍为 2。
 必须重建匹配的 Kernel、Capsule 和 Ledger；不再使用 `memory-v11` feature。
 
