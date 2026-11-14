@@ -21,7 +21,8 @@ pub enum MappingError {
 }
 
 impl MappingError {
-    /// A rejected Busy or an accepted Pending can be retried with this endpoint.
+    /// Retry with this endpoint after rejection, Pending, or a validated
+    /// retained Release(Busy); the latter continues with a fresh request.
     pub fn is_busy(&self) -> bool {
         matches!(self, Self::Access { error, .. } if error.is_busy())
     }

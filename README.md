@@ -13,11 +13,12 @@ Twine 是 Shuyra 的 `no_std` 通信库，使用 Kernel ABI v11 并适配
 ## 原生内存上下文
 
 API、Client 和测试镜像的 Server 固定到 Kernel
-[#180 的已发布候选](https://github.com/shuyra-arche/kernel/pull/180)，
-对应提交 `0ee104ddf94ca74a18135bf216b888a2437bd6f8`。
+[#182 的已验证数据 SMP 候选](https://github.com/shuyra-arche/kernel/pull/182)，
+对应提交 `2cfb581a7ef767ebae0fda4864ed5da625ef067e`。
 所有 manifest 使用该完整 `rev`，与 Vanllia 使用同一个 Cargo Git 来源身份；
 本次更新为待合并提供方的精确 pin，不代表新发布。它在 Delta 的基础上补全
-DTB/initrd 的受管只读来源授权，保留 Kernel #175 的原生 Nest 创建修复。
+跨 Hart CPU 完成证明，保留 #180 的 DTB/initrd 受管只读来源与 #175 的 Nest 创建修复。
+可执行 SMP 仍明确拒绝。提供方 CI 已验证此 SHA，合并顺序为 Kernel、Twine、消费者。
 ABI/Ledger 仍为 11/11、Capsule 格式仍为 2。
 必须重建匹配的 Kernel、Capsule 和 Ledger；不再使用 `memory-v11` feature。
 
@@ -36,10 +37,14 @@ Reservation，确认完成后才归还其 Pend；借用的 Share 来源由调用
 
 映射保留未结清操作的完整描述符和 RequestId。交付失败或 Pending 后重试时，
 重放同一请求，由 Kernel 的 Task journal 去重；不会用新编号重复执行已接受的
-操作。Rejected Busy 可以重新申请编号重试。`MappingError::Uncertain`、
+操作。Rejected Busy/Stale 可以刷新观察并重新申请编号重试。`MappingError::Uncertain`、
 `Pending`、`Failed` 和 `Expired` 携带 `Receipt`，可用 `Receipt::query()`
-查询原结果。Failed 或 Expired 不表示回滚或硬件结清，保留的 owner 不会自动
-丢弃该记录；运行时需检查原结果并处理未结清资源，不能以超时代替完成证据。
+查询原结果。Failed 或 Expired 不表示回滚或硬件结清。
+Release 返回 Failed(Busy) 且保留同一 Reservation 的 Releasing 身份时，
+`finish` 保留 owner、返回原失败回执；下一次显式调用会刷新该资源版本，用新请求
+继续 Release。原 journal 结果保持 Failed，只有新的成功完成回执才允许归还 Pend。
+不匹配的资源身份、硬件失败、超时或 Expired 不会进入这条恢复路径。
+运行时不能以超时代替完成证据。
 
 ## Clone 与 Sign
 
@@ -99,7 +104,8 @@ Sender 交给 Weave 的回复路由。`Reply` 实现 `ReplyReceiver`，验证 Ke
 
 这两个构造函数是 unsafe：调用方必须保证唯一读写端、原子布局、互不重叠的存储和
 每次访问期间的映射有效性。Memo 观察不是生命周期锁；应在端点停止访问后协调
-撤销或物理存储变更。`MappingError::is_busy()` 表示 Busy 或 Pending；重试仍使用
+撤销或物理存储变更。`MappingError::is_busy()` 包含 Busy、Stale、Pending 及上述
+已验证的 Release(Busy) 恢复；重试仍使用
 原端点。本次映射失败时尚未推进字节。`close` 发布端点关闭标记，`finish` 结清
 CPU 预留，失败后可重试；析构不访问共享页，只尽力回收预留。
 
@@ -137,8 +143,9 @@ python3 tests/target/share/run.py --profile debug
 测试覆盖跨页 Clone 载荷、队列关闭后读取、释放后重新映射、单次回复、两个独立
 Team 的满环背压、回绕、排空、等待期间的撤销及对端退出。
 `tests/target/share/target/evidence/` 保存镜像校验、命令、串口和退出结果。
-Delta 的 native 内存契约只接受此处的单 Hart 发布；旧四 Hart 用例不属于本次
-ABI v11 验收。未声明 SMP 或物理硬件验证。
+此通信镜像包含 RX 发布，只验证单 Hart 指令可见性；它不证明可执行 SMP。
+数据 SMP 的 System runtime 组合由 Kernel #182 和 System 消费端分别记录。
+物理硬件未测。
 
 Twine 0.4 是从 0.3 / ABI v10 的不兼容迁移：接收、回复及共享环需要显式传入
 内存上下文；载荷的 `copy/shut/finish` 签名和映射错误类型也已更新。
