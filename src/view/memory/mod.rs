@@ -78,8 +78,16 @@ impl MappingError {
     pub fn is_busy(&self) -> bool {
         matches!(
             self,
-            Self::Rejected(Failure::Busy)
+            Self::Rejected(Failure::Busy | Failure::Stale)
                 | Self::Pending { .. }
+                | Self::Failed {
+                    failure: Failure::Busy,
+                    retained: Some(Value::ReservationLifecycle {
+                        phase: ReservationPhase::Releasing,
+                        ..
+                    }),
+                    ..
+                }
                 | Self::Transport(memory::Error::Delivery(Failure::Busy))
                 | Self::Uncertain {
                     error: memory::Error::Delivery(Failure::Busy),
@@ -351,7 +359,37 @@ impl Mapping {
                 Stage::Ready | Stage::Closed => return Ok(()),
             }
         };
-        let value = self.mutation.run(memory, action)?;
+        let value = match self.mutation.run(memory, action) {
+            Err(
+                error @ MappingError::Failed {
+                    failure: Failure::Busy,
+                    retained:
+                        Some(Value::ReservationLifecycle {
+                            nest,
+                            reservation,
+                            version,
+                            phase: ReservationPhase::Releasing,
+                        }),
+                    ..
+                },
+            ) if matches!(self.stage, Stage::Release) => {
+                let memo = self.memo(0)?;
+                let Action::Release { expected, .. } = action else {
+                    return Err(MappingError::InvalidMapping);
+                };
+                if nest != memo.nest() || reservation != memo.reservation() || version < expected {
+                    return Err(MappingError::InvalidMapping);
+                }
+                // The original request is terminal Failed, not Pending and
+                // not permission to return the Pend. Keep this Reservation;
+                // the next explicit finish observes its current version and
+                // issues a fresh Release continuation. Its old journal entry
+                // and the failure receipt returned here remain unchanged.
+                self.mutation.0 = None;
+                return Err(error);
+            }
+            result => result?,
+        };
         match (self.stage, value) {
             (
                 Stage::Reserve,

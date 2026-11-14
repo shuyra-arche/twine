@@ -29,6 +29,8 @@ enum Fault {
     BusyReserve,
     PendingRelease,
     FailedRelease,
+    BusyRelease,
+    ForeignBusyRelease,
     ExpiredRelease,
 }
 #[derive(Clone, Copy)]
@@ -236,6 +238,9 @@ unsafe impl Memory for Transport {
                 Observation::new(s.observe(query)).unwrap(),
             ));
         }
+        if let Action::InspectResult { request, .. } = request.action() {
+            return Ok(Response::Reply(s.records[&request].1));
+        }
         let id = request.id().unwrap();
         if let Some((old, reply)) = s.records.get(&id).copied() {
             assert_eq!(old, request, "a retained ID must never change descriptors");
@@ -269,6 +274,36 @@ unsafe impl Memory for Transport {
                 version: expected,
                 phase: ReservationPhase::Releasing,
             })
+        } else if matches!(s.fault, Fault::BusyRelease | Fault::ForeignBusyRelease)
+            && opcode == Opcode::Release
+        {
+            let foreign = matches!(s.fault, Fault::ForeignBusyRelease);
+            s.fault = Fault::None;
+            let Action::Release {
+                nest,
+                reservation,
+                expected,
+                ..
+            } = request.action()
+            else {
+                unreachable!();
+            };
+            let r = s.reservations.get_mut(&reservation.get()).unwrap();
+            assert_eq!(r.version, expected);
+            r.version = r.version.next().unwrap();
+            Outcome::Failed {
+                failure: Failure::Busy,
+                retained: Some(Value::ReservationLifecycle {
+                    nest,
+                    reservation: if foreign {
+                        ReservationId::from_bytes(&999u64.to_le_bytes()).unwrap()
+                    } else {
+                        reservation
+                    },
+                    version: r.version,
+                    phase: ReservationPhase::Releasing,
+                }),
+            }
         } else if matches!(s.fault, Fault::FailedRelease) && opcode == Opcode::Release {
             s.fault = Fault::None;
             let Action::Release {
@@ -447,4 +482,80 @@ fn failed_or_expired_cleanup_never_returns_resources_or_issues_a_fresh_mutation(
         assert_eq!(releases.len(), 2);
         assert_eq!(releases[0], releases[1]);
     }
+}
+
+#[test]
+fn busy_release_continues_the_retained_resource_without_rewriting_its_failed_receipt() {
+    let state = State::new(Fault::BusyRelease);
+    let mut writer = writer(&state);
+    writer.write(b"a").unwrap();
+    let error = writer.finish().unwrap_err();
+    assert!(error.is_busy());
+    let MappingError::Access {
+        error: NativeError::Failed { receipt, .. },
+        ..
+    } = error
+    else {
+        panic!("original failed receipt must remain visible");
+    };
+    let (original, failed) = state.borrow().records[&receipt.request];
+    assert!(state.borrow().returned.is_empty());
+    writer.finish().unwrap();
+    let mut transport = Transport(state.clone());
+    assert!(
+        matches!(transport.invoke(receipt.query()).unwrap(), Response::Reply(reply) if reply == failed)
+    );
+    assert!(
+        matches!(transport.invoke(Call::from_request(original)).unwrap(), Response::Reply(reply) if reply == failed)
+    );
+    let s = state.borrow();
+    assert_eq!(s.returned.len(), 3);
+    let resumed = s
+        .calls
+        .iter()
+        .find(|r| {
+            matches!(r.action(), Action::Release { reservation, .. }
+        if reservation.get() == 1)
+                && r.id() != original.id()
+        })
+        .unwrap();
+    let Action::Release {
+        expected: before, ..
+    } = original.action()
+    else {
+        unreachable!()
+    };
+    let Action::Release {
+        expected: after, ..
+    } = resumed.action()
+    else {
+        unreachable!()
+    };
+    assert!(after > before);
+    assert_eq!(s.records[&receipt.request].1, failed);
+}
+
+#[test]
+fn a_foreign_retained_reservation_never_authorizes_cleanup_continuation() {
+    let state = State::new(Fault::ForeignBusyRelease);
+    let mut writer = writer(&state);
+    writer.write(b"a").unwrap();
+    for _ in 0..2 {
+        assert!(matches!(
+            writer.finish(),
+            Err(MappingError::Access {
+                error: NativeError::InvalidMapping,
+                ..
+            })
+        ));
+    }
+    let s = state.borrow();
+    assert!(s.returned.is_empty());
+    let releases: Vec<_> = s
+        .calls
+        .iter()
+        .filter(|r| matches!(r.action(), Action::Release { .. }))
+        .collect();
+    assert_eq!(releases.len(), 2);
+    assert_eq!(releases[0], releases[1]);
 }
