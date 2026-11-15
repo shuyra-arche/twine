@@ -12,7 +12,7 @@ import time
 PAGE = 4096
 TARGET = "riscv64gc-unknown-none-elf"
 PASS = b"PASS twine-share abi=13 clone=1 reply=1 teams=2 wrap=1 drain=1 revoke=1 exit=1"
-PROVIDER = "33243f050d1b2ebbb72a7853aa77c5a5c3f16652"
+PROVIDER = "12cb1b5ae7fcd57b46cc0103a0f30ea29631724e"
 
 
 def initrd(elf: bytes) -> bytes:
@@ -43,6 +43,7 @@ def main() -> None:
     parser.add_argument("kernel", type=Path, nargs="?", help="optional matching ABI 13 image")
     parser.add_argument("--profile", choices=["debug", "release"], default="release")
     parser.add_argument("--no-build", action="store_true")
+    parser.add_argument("--platform-toolchain", default="nightly-2026-11-14")
     args = parser.parse_args()
     guest = Path(__file__).resolve().parent
     target = guest / "target"
@@ -55,7 +56,7 @@ def main() -> None:
         ], cwd=guest, check=True, env={**os.environ, "RUSTFLAGS": flags})
         if not args.kernel:
             subprocess.run([
-                "cargo", "+nightly-2026-11-14", "build", "--locked", *profile, "--target", TARGET,
+                "cargo", f"+{args.platform_toolchain}", "build", "--locked", *profile, "--target", TARGET,
                 "--manifest-path", guest / "platform/Cargo.toml", "--target-dir", target,
             ], cwd=guest, check=True, env={**os.environ, "RUSTFLAGS": flags})
     binaries = target / TARGET / args.profile
@@ -76,7 +77,9 @@ def main() -> None:
     metadata = {"expected_kernel_revision": PROVIDER, "built_kernel_sha": None if args.kernel else PROVIDER,
                 "qemu": version, "command": [str(value) for value in command],
                 "guest_rustc": subprocess.check_output(["rustc", "-Vv"], text=True),
-                "platform_toolchain": "nightly-2026-11-14", "external_image": bool(args.kernel),
+                "platform_toolchain": args.platform_toolchain, "external_image": bool(args.kernel),
+                "platform_rustc": None if args.kernel else subprocess.check_output(["rustc", f"+{args.platform_toolchain}", "-Vv"], text=True),
+                "build_skipped": args.no_build,
                 "sha256": {str(p): hashlib.sha256(p.read_bytes()).hexdigest()
                            for p in [kernel, elf, image, firmware, guest / "Cargo.lock", guest / "platform/Cargo.lock"]}}
     (evidence / "inputs.json").write_text(json.dumps(metadata, indent=2))
