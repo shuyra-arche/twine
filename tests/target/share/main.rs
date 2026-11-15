@@ -41,7 +41,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 #[unsafe(no_mangle)]
 extern "C" fn start() -> ! {
     let license = fixture::license();
-    assert_eq!(kernel_api::abi::VERSION, 11);
+    assert_eq!(kernel_api::abi::VERSION, 13);
     clone_roundtrip(license);
     let code = fixture::Code::new();
     for mode in [Mode::Drain, Mode::Revoke, Mode::Exit] {
@@ -49,7 +49,7 @@ extern "C" fn start() -> ! {
     }
     writeln!(
         Console,
-        "PASS twine-share abi=11 clone=1 reply=1 teams=2 wrap=1 drain=1 revoke=1 exit=1"
+        "PASS twine-share abi=13 clone=1 reply=1 teams=2 wrap=1 drain=1 revoke=1 exit=1"
     )
     .unwrap();
     exit(0)

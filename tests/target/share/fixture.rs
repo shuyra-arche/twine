@@ -291,7 +291,7 @@ impl Code {
         };
         // Each Team receives its own complete code/data image. Native Flat/Nest
         // operations enforce writer retirement before executable publication.
-        assert!(self.pages <= MAX_IMAGE_PAGES);
+        assert!(self.pages + 17 <= MAX_IMAGE_PAGES);
         let mut memos = [None; MAX_IMAGE_PAGES];
         let mut slots = [None; MAX_IMAGE_PAGES];
         for page in 0..self.pages {
@@ -331,13 +331,28 @@ impl Code {
             slots[page] = Some(slot);
             memos[page] = Some(memo);
         }
-        let args = [mode as usize];
+        let top = 0x3f_ffff_f000usize;
+        let bottom = top - 16 * PAGE_SIZE;
+        let (guard, _) = reserve(whole, Placement::exact(VirtAddr::new(bottom - PAGE_SIZE), PAGE_SIZE).unwrap(), 1, 6);
+        memos[self.pages] = Some(guard);
+        for page in 0..16 {
+            let slot = allocate(license, 1);
+            if page == 15 {
+                let (stage, at) = reserve(space(), Placement::lowest(PAGE_SIZE).unwrap(), 1, 6);
+                insert(stage, Source::Flat { position: slot, expected: slot_version(slot) });
+                publish(stage);
+                unsafe { ((at.get() + PAGE_SIZE - 8) as *mut usize).write(mode as usize); }
+                release(stage);
+            }
+            let (memo, _) = reserve(whole, Placement::exact(VirtAddr::new(bottom + page * PAGE_SIZE), PAGE_SIZE).unwrap(), 1, 6);
+            insert(memo, Source::Flat { position: slot, expected: slot_version(slot) });
+            publish(memo);
+            memos[self.pages + page + 1] = Some(memo);
+            slots[self.pages + page + 1] = Some(slot);
+        }
         let request = UnitCreate::Task {
             team: Some(team),
-            entry: VirtAddr::new(entry as *const () as usize),
-            args: VirtAddr::new(args.as_ptr().addr()),
-            count: 1,
-            stack: VirtAddr::new(0),
+            start: TaskStart { entry: VirtAddr::new(entry as *const () as usize), stack_pointer: VirtAddr::new(top - 16), arguments: VirtAddr::new(top - 8), argument_count: 1 },
         };
         let CreatedUnit::Task(task) = unit::create(addr(&request.to_bytes())).unwrap() else {
             panic!("Task");

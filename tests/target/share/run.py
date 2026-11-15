@@ -1,4 +1,4 @@
-"""Boot Twine's native ABI 11 communication checks on the pinned RAM-only platform."""
+"""Boot Twine's native ABI 13 communication checks on the pinned RAM-only platform."""
 
 import argparse
 import hashlib
@@ -11,7 +11,7 @@ import time
 
 PAGE = 4096
 TARGET = "riscv64gc-unknown-none-elf"
-PASS = b"PASS twine-share abi=11 clone=1 reply=1 teams=2 wrap=1 drain=1 revoke=1 exit=1"
+PASS = b"PASS twine-share abi=13 clone=1 reply=1 teams=2 wrap=1 drain=1 revoke=1 exit=1"
 PROVIDER = "684f479c45dc2d94d405b32b4ffc6334a4233fc9"
 
 
@@ -32,7 +32,7 @@ def initrd(elf: bytes) -> bytes:
             output.extend(bytes(payload + data * PAGE - len(output)))
         regions.append((address, pages, data, payload, 1 | (2 if flags & 2 else 0) | (4 if flags & 1 else 0)))
     assert 32 + len(regions) * 40 <= PAGE
-    struct.pack_into("<8sHBBIQQ", output, 0, b"SQBOOT01", 2, 12, 11, len(regions), entry, len(output))
+    struct.pack_into("<8sHBBIQQ", output, 0, b"SQBOOT01", 2, 12, 13, len(regions), entry, len(output))
     for i, region in enumerate(regions):
         struct.pack_into("<5Q", output, 32 + i * 40, *region)
     return struct.pack("<II", PAGE, len(output)).ljust(PAGE, b"\0") + output
@@ -40,7 +40,7 @@ def initrd(elf: bytes) -> bytes:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("kernel", type=Path, nargs="?", help="optional matching ABI 11 image")
+    parser.add_argument("kernel", type=Path, nargs="?", help="optional matching ABI 13 image")
     parser.add_argument("--profile", choices=["debug", "release"], default="release")
     parser.add_argument("--no-build", action="store_true")
     args = parser.parse_args()
