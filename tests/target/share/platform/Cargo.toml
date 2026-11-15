@@ -13,8 +13,8 @@ test = false
 bench = false
 
 [dependencies]
-kernel-api = { git = "https://github.com/shuyra-arche/kernel.git", rev = "684f479c45dc2d94d405b32b4ffc6334a4233fc9" }
-kernel = { git = "https://github.com/shuyra-arche/kernel.git", rev = "684f479c45dc2d94d405b32b4ffc6334a4233fc9" }
+kernel-api = { git = "https://github.com/shuyra-arche/kernel.git", rev = "789ffd19b5359f3de172fb9aad8a61f6a7113a64" }
+kernel = { git = "https://github.com/shuyra-arche/kernel.git", rev = "789ffd19b5359f3de172fb9aad8a61f6a7113a64" }
 spin = { version = "0.10", default-features = false, features = ["once"] }
 fdt = { version = "0.1.5", default-features = false }
 
