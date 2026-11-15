@@ -14,7 +14,7 @@ Twine 是 Shuyra 的 `no_std` 通信库，使用 Kernel ABI v13 并适配
 
 API、Client 和测试镜像的 Server 固定到 Kernel
 [#183 的可执行 SMP 候选](https://github.com/shuyra-arche/kernel/pull/183)，
-对应提交 `9c0fc4da1ca4e41bd6ddea3cba2b5964c07323d2`。
+对应提交 `789ffd19b5359f3de172fb9aad8a61f6a7113a64`。
 所有 manifest 使用该完整 `rev`，与 Vanllia 使用同一个 Cargo Git 来源身份；
 本次更新为待合并提供方的精确 pin，不代表新发布。它在 Delta 的基础上补全
 跨 Hart CPU 完成证明，保留 #180 的 DTB/initrd 受管只读来源与 #175 的 Nest 创建修复。
