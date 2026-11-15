@@ -12,7 +12,7 @@ import time
 PAGE = 4096
 TARGET = "riscv64gc-unknown-none-elf"
 PASS = b"PASS twine-share abi=13 clone=1 reply=1 teams=2 wrap=1 drain=1 revoke=1 exit=1"
-PROVIDER = "12cb1b5ae7fcd57b46cc0103a0f30ea29631724e"
+PROVIDER = "5da3ae3e0b971f34a003a31d344ee20593725e53"
 
 
 def initrd(elf: bytes) -> bytes:
