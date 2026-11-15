@@ -1,6 +1,6 @@
 # Twine · 纺
 
-Twine 是 Shuyra 的 `no_std` 通信库，使用 Kernel ABI v11 并适配
+Twine 是 Shuyra 的 `no_std` 通信库，使用 Kernel ABI v13 并适配
 [Weave](https://github.com/shuyra-arche/weave) 的完整帧接口。
 
 | 模块 | 职责 |
@@ -14,17 +14,17 @@ Twine 是 Shuyra 的 `no_std` 通信库，使用 Kernel ABI v11 并适配
 
 API、Client 和测试镜像的 Server 固定到 Kernel
 [#183 的可执行 SMP 候选](https://github.com/shuyra-arche/kernel/pull/183)，
-对应提交 `684f479c45dc2d94d405b32b4ffc6334a4233fc9`。
+对应提交 `33243f050d1b2ebbb72a7853aa77c5a5c3f16652`。
 所有 manifest 使用该完整 `rev`，与 Vanllia 使用同一个 Cargo Git 来源身份；
 本次更新为待合并提供方的精确 pin，不代表新发布。它在 Delta 的基础上补全
 跨 Hart CPU 完成证明，保留 #180 的 DTB/initrd 受管只读来源与 #175 的 Nest 创建修复。
 可执行 SMP 需要平台显式准入；本仓库通信镜像继续验证单 Hart。
 提供方 Host/构建与开发 Loader 组合已验证；最终 CI 证据见关联 PR。
 合并顺序为 Kernel、Twine、消费者。
-ABI/Ledger 仍为 11/11、Capsule 格式仍为 2。
+ABI/Ledger 为 13/13、Capsule 格式仍为 2。
 必须重建匹配的 Kernel、Capsule 和 Ledger；不再使用 `memory-v11` feature。
 
-ABI v11 的 Share 只提供逻辑来源，旧 `Open/Shut` 调用已退役。
+ABI v13 的 Share 只提供逻辑来源，旧 `Open/Shut` 调用已退役。
 映射需要当前 Task 自己的 Internal Nest 上的 Reserve 授权。
 用 `view::memory::Native::new(space, nest, requests)` 构造上下文：
 这是 unsafe 构造，因为外部 Nest 上发布成功不代表地址在调用方可访问。
@@ -153,3 +153,5 @@ Twine 0.4 是从 0.3 / ABI v10 的不兼容迁移：接收、回复及共享环�
 内存上下文；载荷的 `copy/shut/finish` 签名和映射错误类型也已更新。
 API、Client、Server、Capsule、Ledger 及使用方须一起重建。
 来源与归属见 [PROVENANCE.md](PROVENANCE.md)。
+
+当前分支消费 Kernel #188/#206/#160 与 api/abi-macros 迁移的组合提交；Kernel 提供方先合并，再依序合并 Twine 与 System/Vanllia。测试子 Task 的栈、Guard 与参数由 fixture 通过实际 Nest/Flat 授权准备，退出与内存退休分别验证。历史 Delta 的验证不作为当前提交证据。

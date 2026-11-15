@@ -333,26 +333,55 @@ impl Code {
         }
         let top = 0x3f_ffff_f000usize;
         let bottom = top - 16 * PAGE_SIZE;
-        let (guard, _) = reserve(whole, Placement::exact(VirtAddr::new(bottom - PAGE_SIZE), PAGE_SIZE).unwrap(), 1, 6);
+        let (guard, _) = reserve(
+            whole,
+            Placement::exact(VirtAddr::new(bottom - PAGE_SIZE), PAGE_SIZE).unwrap(),
+            1,
+            6,
+        );
         memos[self.pages] = Some(guard);
         for page in 0..16 {
             let slot = allocate(license, 1);
             if page == 15 {
                 let (stage, at) = reserve(space(), Placement::lowest(PAGE_SIZE).unwrap(), 1, 6);
-                insert(stage, Source::Flat { position: slot, expected: slot_version(slot) });
+                insert(
+                    stage,
+                    Source::Flat {
+                        position: slot,
+                        expected: slot_version(slot),
+                    },
+                );
                 publish(stage);
-                unsafe { ((at.get() + PAGE_SIZE - 8) as *mut usize).write(mode as usize); }
+                unsafe {
+                    ((at.get() + PAGE_SIZE - 8) as *mut usize).write(mode as usize);
+                }
                 release(stage);
             }
-            let (memo, _) = reserve(whole, Placement::exact(VirtAddr::new(bottom + page * PAGE_SIZE), PAGE_SIZE).unwrap(), 1, 6);
-            insert(memo, Source::Flat { position: slot, expected: slot_version(slot) });
+            let (memo, _) = reserve(
+                whole,
+                Placement::exact(VirtAddr::new(bottom + page * PAGE_SIZE), PAGE_SIZE).unwrap(),
+                1,
+                6,
+            );
+            insert(
+                memo,
+                Source::Flat {
+                    position: slot,
+                    expected: slot_version(slot),
+                },
+            );
             publish(memo);
             memos[self.pages + page + 1] = Some(memo);
             slots[self.pages + page + 1] = Some(slot);
         }
         let request = UnitCreate::Task {
             team: Some(team),
-            start: TaskStart { entry: VirtAddr::new(entry as *const () as usize), stack_pointer: VirtAddr::new(top - 16), arguments: VirtAddr::new(top - 8), argument_count: 1 },
+            start: TaskStart {
+                entry: VirtAddr::new(entry as *const () as usize),
+                stack_pointer: VirtAddr::new(top - 16),
+                arguments: VirtAddr::new(top - 8),
+                argument_count: 1,
+            },
         };
         let CreatedUnit::Task(task) = unit::create(addr(&request.to_bytes())).unwrap() else {
             panic!("Task");
