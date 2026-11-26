@@ -101,4 +101,4 @@ checksum = "a2c754d6c33795a1c324727428e5a7dedb5b06195f9890bdbcba760d3e246563"
 [[package]]
 name = "weave"
 version = "0.0.1"
-source = "git+https://github.com/shuyra-arche/weave.git?rev=7a7d67fb3f190aeb43049d051b0972bcd53213bc#7a7d67fb3f190aeb43049d051b0972bcd53213bc"
+source = "git+https://github.com/shuyra-arche/weave.git?rev=671220b53c44187160eae27b581f4a900e22ec01#671220b53c44187160eae27b581f4a900e22ec01"
