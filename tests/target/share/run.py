@@ -11,7 +11,7 @@ import time
 
 PAGE = 4096
 TARGET = "riscv64gc-unknown-none-elf"
-PASS = b"PASS twine-share abi=13 clone=1 reply=1 teams=2 wrap=1 drain=1 revoke=1 exit=1"
+PASS = b"PASS twine-share abi=13 clone=1 reply=1 teams=2 wrap=1 drain=1 revoke=1 exit=1 weave=1"
 PROVIDER = "789ffd19b5359f3de172fb9aad8a61f6a7113a64"
 
 

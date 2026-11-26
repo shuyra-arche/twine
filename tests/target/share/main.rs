@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+mod exchange;
 mod fixture;
 
 use core::fmt::Write as _;
@@ -43,13 +44,14 @@ extern "C" fn start() -> ! {
     let license = fixture::license();
     assert_eq!(kernel_api::abi::VERSION, 13);
     clone_roundtrip(license);
+    exchange::run(license);
     let code = fixture::Code::new();
     for mode in [Mode::Drain, Mode::Revoke, Mode::Exit] {
         run(license, &code, mode);
     }
     writeln!(
         Console,
-        "PASS twine-share abi=13 clone=1 reply=1 teams=2 wrap=1 drain=1 revoke=1 exit=1"
+        "PASS twine-share abi=13 clone=1 reply=1 teams=2 wrap=1 drain=1 revoke=1 exit=1 weave=1"
     )
     .unwrap();
     exit(0)
