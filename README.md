@@ -142,7 +142,7 @@ python3 tests/target/share/run.py --profile debug
 ```
 
 可选的位置参数指定已经构建的匹配测试镜像；`--no-build` 复用本地二进制。
-测试覆盖跨页 Clone 载荷、队列关闭后读取、释放后重新映射、单次回复、两个独立
+测试覆盖真实 Weave typed request/reply + serve_once、同源旧回复隔离和显式结清（单 Unit 同步 loopback，不验证并发调度），以及跨页 Clone 载荷、队列关闭后读取、释放后重新映射、单次回复、两个独立
 Team 的满环背压、回绕、排空、等待期间的撤销及对端退出。
 `tests/target/share/target/evidence/` 保存镜像校验、命令、串口和退出结果。
 此通信镜像包含 RX 发布，只验证单 Hart 指令可见性；它不证明可执行 SMP。
